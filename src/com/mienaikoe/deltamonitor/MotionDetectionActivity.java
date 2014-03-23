@@ -21,7 +21,7 @@ import java.io.IOException;
 
 
 
-public class MotionDetectionActivity extends Activity {
+public class MotionDetectionActivity extends Activity{
 
     private static final String TAG = "MotionDetectionActivity";
 
@@ -45,23 +45,30 @@ public class MotionDetectionActivity extends Activity {
         
         SurfaceView preview = (SurfaceView)findViewById(R.id.preview);
         previewHolder = preview.getHolder();
+        previewHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
 
         Intent bindingIntent = new Intent(this, CameraWatcherService.class);        
-        bindService(bindingIntent, connection, Context.BIND_AUTO_CREATE);
+        bindService(bindingIntent, connection, Context.BIND_ABOVE_CLIENT);
     }
 
     
   
+    
+    
+    
 
     private ServiceConnection connection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName className, IBinder binderGen) {
+            Log.i(TAG,"====================================== Service Connected");
+
             // We've bound to LocalService, cast the IBinder and get LocalService instance
             CameraWatcherServiceBinder binder = (CameraWatcherServiceBinder) binderGen;
             watcherService = binder.getService();
             bound = true;
             
             camera = watcherService.getCamera();
+            previewHolder.addCallback(holderCallback);
             takeOverCamera();
         }
 
@@ -123,6 +130,7 @@ public class MotionDetectionActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        Log.i(TAG, "===================================== Destroying MD Activity");
         if( bound ){
             relinquishCamera();
             watcherService.startRecording();
@@ -146,6 +154,40 @@ public class MotionDetectionActivity extends Activity {
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
     }
+
+    
+    
+    
+    private SurfaceHolder.Callback holderCallback = new SurfaceHolder.Callback() {
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public void surfaceCreated(SurfaceHolder holder) {
+            try {
+                camera.setPreviewDisplay(previewHolder);
+            } catch (Exception ex) {
+                Log.e(TAG, "Exception in setPreviewDisplay()", ex);
+            }
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+            // ignore
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public void surfaceDestroyed(SurfaceHolder holder) {
+            // Ignore
+        }
+    };
 
 
 }

@@ -144,7 +144,7 @@ public class CameraWatcherService extends Service {
 
             int[] img = ImageProcessing.decodeYUV420SPtoRGB(buffer, size.width, size.height);
             if (img != null && detector.detect(img, size.width, size.height)) {
-                Log.i(TAG, "========== Motion Detected");
+                Log.i(TAG, "======================================= Motion Detected");
                 stopRecording();
                 Intent intent = new Intent(CameraWatcherService.this, MotionDetectionActivity.class);
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
