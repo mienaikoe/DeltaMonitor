@@ -39,7 +39,7 @@ public class CameraWatcherService extends Service {
     private SurfaceTexture texture;
     private boolean toastPopped = false;
     private boolean bound = false;
-    private static final int TOAST_ID = 614;
+    private static final int NOTIFICATION_ID = 614;
     private IMotionDetection detector = null;
     private NotificationManager notifier;
 
@@ -77,6 +77,7 @@ public class CameraWatcherService extends Service {
         Log.w(TAG, "============Destroying CameraWatcherService");
         stopRecording();
         camera.release();
+        notifier.cancel(NOTIFICATION_ID);
         super.onDestroy();
     }
 
@@ -201,8 +202,6 @@ public class CameraWatcherService extends Service {
         // your application to the Home screen.
         TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
         stackBuilder.addParentStack(MotionDetectionActivity.class);
-        
-        // Adds the Intent that starts the Activity to the top of the stack
         stackBuilder.addNextIntent(resultIntent);
         PendingIntent resultPendingIntent = stackBuilder.getPendingIntent( 0, PendingIntent.FLAG_UPDATE_CURRENT );
         mBuilder.setContentIntent(resultPendingIntent);
@@ -210,7 +209,7 @@ public class CameraWatcherService extends Service {
         if( notifier == null){
             notifier = (NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
         }
-        notifier.notify(TOAST_ID, mBuilder.build());
+        notifier.notify(NOTIFICATION_ID, mBuilder.build());
     }
 
 }

@@ -13,6 +13,7 @@ import android.os.IBinder;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.View;
 import com.mienaikoe.deltamonitor.CameraWatcherService.CameraWatcherServiceBinder;
 import java.io.IOException;
 
@@ -67,6 +68,7 @@ public class MotionDetectionActivity extends Activity{
             watcherService = binder.getService();
             bound = true;
             
+            watcherService.stopRecording();
             camera = watcherService.getCamera();
             previewHolder.addCallback(holderCallback);
             takeOverCamera();
@@ -139,11 +141,17 @@ public class MotionDetectionActivity extends Activity{
         super.onDestroy();
     }
     
-    private void stopWatching(){
+    
+    
+    public void stopWatching(View view){
         if(bound){
+            relinquishCamera();
             Intent watcherIntent = new Intent(MotionDetectionActivity.this, CameraWatcherService.class);
             stopService(watcherIntent);
+            unbindService(connection);
+            bound = false; // Race Condition was happening.
         }
+        finish();
     }
     
 
