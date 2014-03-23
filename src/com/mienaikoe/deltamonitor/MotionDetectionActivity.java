@@ -7,24 +7,20 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 
 import android.content.res.Configuration;
-import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-import android.view.TextureView;
 import com.mienaikoe.deltamonitor.CameraWatcherService.CameraWatcherServiceBinder;
 import java.io.IOException;
 
 
-/**
- * This class extends Activity to handle a picture preview, process the frame
- * for motion, and then save the file to the SD card.
- * 
- * @author Justin Wetherell <phishman3579@gmail.com>
- */
+
+
+
+
 public class MotionDetectionActivity extends Activity {
 
     private static final String TAG = "MotionDetectionActivity";
@@ -53,10 +49,10 @@ public class MotionDetectionActivity extends Activity {
         Intent bindingIntent = new Intent(this, CameraWatcherService.class);        
         bindService(bindingIntent, connection, Context.BIND_AUTO_CREATE);
     }
-    
 
     
-    
+  
+
     private ServiceConnection connection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName className, IBinder binderGen) {
@@ -65,14 +61,8 @@ public class MotionDetectionActivity extends Activity {
             watcherService = binder.getService();
             bound = true;
             
-            try{
-                camera = watcherService.getCamera();
-                camera.setPreviewDisplay(previewHolder);
-                camera.startPreview();
-            } catch(IOException ex) {
-                Log.e(TAG, "Could not set preview display: "+ex.getMessage());
-                ex.printStackTrace();
-            }
+            camera = watcherService.getCamera();
+            takeOverCamera();
         }
 
         @Override
@@ -85,21 +75,67 @@ public class MotionDetectionActivity extends Activity {
     
     
     
+    private void takeOverCamera(){
+        try{
+            camera.setPreviewDisplay(previewHolder);
+        } catch( IOException ex ){
+            Log.e(TAG, "Unable to unset preview display");
+            ex.printStackTrace();
+        }
+        camera.startPreview();
+    }
+    
+    
+    private void relinquishCamera(){
+        camera.stopPreview();
+        try{
+            camera.setPreviewDisplay(null);
+        } catch( IOException ex ){
+            Log.e(TAG, "Unable to unset preview display");
+            ex.printStackTrace();
+        }
+    }
+    
+    
+    
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void onPause() {
+        super.onPause();
+        if(!isFinishing()){
+            finish();
+        }
+    }
+    
+    
+    
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if(!isFinishing()){
+            finish();
+        }
+    }
+    
+    
 
     @Override
     protected void onDestroy() {
-        if(bound){
-            camera.stopPreview();
-            try{
-                camera.setPreviewDisplay(null);
-            } catch( IOException ex ){
-                Log.e(TAG, "Unable to unset preview display");
-                ex.printStackTrace();
-            }
-            camera = null;
+        if( bound ){
+            relinquishCamera();
+            watcherService.startRecording();
             unbindService(connection);
         }
         super.onDestroy();
+    }
+    
+    private void stopWatching(){
+        if(bound){
+            Intent watcherIntent = new Intent(MotionDetectionActivity.this, CameraWatcherService.class);
+            stopService(watcherIntent);
+        }
     }
     
 
@@ -109,22 +145,6 @@ public class MotionDetectionActivity extends Activity {
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void onPause() {
-        super.onPause();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void onResume() {
-        super.onResume();
     }
 
 

@@ -1,4 +1,6 @@
-/bin
+/bin/*
+!/bin/DeltaMonitor-debug.apk
+
 /gen
 /nbproject
 /build/

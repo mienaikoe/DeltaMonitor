@@ -24,6 +24,11 @@ public class AggregateLumaMotionDetection implements IMotionDetection {
     private static int mPreviousHeight;
     private static State mPreviousState = null;
 
+    
+    @Override
+    public void reset(){
+        mPrevious = null;
+    }
     /**
      * {@inheritDoc}
      */

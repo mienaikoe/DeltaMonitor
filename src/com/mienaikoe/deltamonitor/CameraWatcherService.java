@@ -5,19 +5,21 @@
  */
 package com.mienaikoe.deltamonitor;
 
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import java.io.IOException;
 import android.app.Service;
+import android.app.TaskStackBuilder;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.ImageFormat;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
-import android.hardware.Camera.Size;
 import static android.opengl.GLES11Ext.GL_TEXTURE_EXTERNAL_OES;
 import android.opengl.GLES20;
 import android.os.Binder;
-import android.os.Handler;
 import android.os.IBinder;
-import android.os.Message;
+import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.widget.Toast;
 import com.jwetherell.motion_detection.data.Preferences;
@@ -31,32 +33,27 @@ public class CameraWatcherService extends Service {
 
     private static final String TAG = "CameraWatcherService";
 
-
     private Camera camera;
     private Camera.Size size;
     private byte[] buffer;
     private SurfaceTexture texture;
-    private boolean isRecording = false;
     private boolean toastPopped = false;
+    private boolean bound = false;
+    private static final int TOAST_ID = 614;
     private IMotionDetection detector = null;
+    private NotificationManager notifier;
 
     public Camera getCamera() {
         return camera;
     }
 
-
-    
-    
-
-    private static SurfaceTexture getTexture(){
+    private static SurfaceTexture getTexture() {
         int[] textures = new int[1];
         GLES20.glGenTextures(1, textures, 0);
         GLES20.glBindTexture(GL_TEXTURE_EXTERNAL_OES, textures[0]);
         return new SurfaceTexture(textures[0]);
     }
-    
-    
-    
+
     @Override
     public void onCreate() {
         if (Preferences.USE_RGB) {
@@ -68,34 +65,24 @@ public class CameraWatcherService extends Service {
             detector = new AggregateLumaMotionDetection();
         }
 
-        super.onCreate();
+        notifyMessage("DeltaMonitor Running","Touch to Preview Camera");
         
+        super.onCreate();
+
         startRecording();
     }
-    
-
-    
-    
-
-
- 
-    
-
 
     @Override
     public void onDestroy() {
         Log.w(TAG, "============Destroying CameraWatcherService");
         stopRecording();
-        isRecording = false;
         camera.release();
         super.onDestroy();
     }
 
-    
-    
     public void startRecording() {
-        if( camera == null ){
-            try{
+        if (camera == null) {
+            try {
                 camera = Camera.open();
             } catch (Exception ex) {
                 Log.e(TAG, ex.getMessage());
@@ -103,106 +90,127 @@ public class CameraWatcherService extends Service {
                 return;
             }
         }
-        
-        try{
+
+        try {
             Log.i(TAG, "==================Beginning to Record");
-            
-            if( buffer == null ){
+
+            if (buffer == null) {
                 Camera.Parameters parameters = CameraSizer.sizeUp(camera);
                 size = parameters.getPreviewSize();
-                buffer = new byte[size.height*size.width*ImageFormat.getBitsPerPixel(parameters.getPreviewFormat()) / 8];
+                buffer = new byte[size.height * size.width * ImageFormat.getBitsPerPixel(parameters.getPreviewFormat()) / 8];
             }
             camera.addCallbackBuffer(buffer);
-            
-            if( texture == null ){
+
+            if (texture == null) {
                 texture = getTexture();
             }
             camera.setPreviewTexture(texture);
             
+            detector.reset();
             camera.setPreviewCallbackWithBuffer(previewCallback);
             camera.startPreview();
-            
-        } catch(IOException ex){
-            Log.e(TAG, "IOException during recording setup "+ex.getMessage());
+
+        } catch (IOException ex) {
+            Log.e(TAG, "IOException during recording setup " + ex.getMessage());
             ex.printStackTrace();
         }
     }
 
-    public void stopRecording() {        
-        try{
+    public void stopRecording() {
+        try {
             camera.stopPreview();
             camera.setPreviewCallbackWithBuffer(null);
             camera.setPreviewCallback(null);
             camera.setPreviewTexture(null);
             texture = null; //TODO: This is a patch for a bug (SurfaceTexture has been abandoned)
-        } catch(IOException ex){
-            Log.e(TAG, "IOException during recording setup "+ex.getMessage());
+        } catch (IOException ex) {
+            Log.e(TAG, "IOException during recording setup " + ex.getMessage());
             ex.printStackTrace();
         }
-        
+
         toastPopped = false;
-        isRecording = false;
     }
-    
-    
-    
+
     private final Camera.PreviewCallback previewCallback = new Camera.PreviewCallback() {
         @Override
         public void onPreviewFrame(byte[] data, Camera cam) {
-            if( !isRecording ){
-                isRecording = true;
-            } 
-          
-            if (data == null) return;
-            if (size == null) return;
-            
+
+            if (data == null) {
+                return;
+            }
+            if (size == null) {
+                return;
+            }
+
             int[] img = ImageProcessing.decodeYUV420SPtoRGB(buffer, size.width, size.height);
             if (img != null && detector.detect(img, size.width, size.height)) {
                 Log.i(TAG, "========== Motion Detected");
                 stopRecording();
-                activityStarter.sendEmptyMessage(1);
+                Intent intent = new Intent(CameraWatcherService.this, MotionDetectionActivity.class);
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);
             } else {
                 camera.addCallbackBuffer(buffer);
-                if(!toastPopped){
+                if (!toastPopped) {
                     toastPopped = true;
-                    Toast.makeText(getBaseContext(), "DeltaMonitor is recording in the background. Large changes in the camera view will wake up the application.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getBaseContext(), "DeltaMonitor is now recording in the background. Changes in the camera's view will wake up camera preview.", Toast.LENGTH_SHORT).show();
                 }
             }
         }
     };
-    
-    
-    
-    
+
     public class CameraWatcherServiceBinder extends Binder {
-        CameraWatcherService getService(){
+
+        CameraWatcherService getService() {
             return CameraWatcherService.this;
         }
     }
-    
+
     private final IBinder binder = new CameraWatcherServiceBinder();
-   
+
     @Override
     public IBinder onBind(Intent intent) {
+        bound = true;
         return binder;
     }
 
     @Override
-    public boolean onUnbind(Intent intent) {            
-        startRecording();
-        return super.onUnbind(intent); 
+    public boolean onUnbind(Intent intent) {
+        bound = false;
+        return super.onUnbind(intent);
     }
     
     
     
-    private final Handler activityStarter = new Handler(){
-        @Override
-        public synchronized void handleMessage(Message m){
-            Intent intent = new Intent (CameraWatcherService.this, MotionDetectionActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(intent);
-        }
-    };
     
+    
+
+    private void notifyMessage(String title, String message) {
+        NotificationCompat.Builder mBuilder
+                = new NotificationCompat.Builder(this)
+                .setSmallIcon(R.drawable.icon)
+                .setContentTitle(title)
+                .setContentText(message);
+        
+        // Creates an explicit intent for an Activity in your app
+        Intent resultIntent = new Intent(this, MotionDetectionActivity.class);
+
+        // The stack builder object will contain an artificial back stack for the
+        // started Activity.
+        // This ensures that navigating backward from the Activity leads out of
+        // your application to the Home screen.
+        TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
+        stackBuilder.addParentStack(MotionDetectionActivity.class);
+        
+        // Adds the Intent that starts the Activity to the top of the stack
+        stackBuilder.addNextIntent(resultIntent);
+        PendingIntent resultPendingIntent = stackBuilder.getPendingIntent( 0, PendingIntent.FLAG_UPDATE_CURRENT );
+        mBuilder.setContentIntent(resultPendingIntent);
+
+        if( notifier == null){
+            notifier = (NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
+        }
+        notifier.notify(TOAST_ID, mBuilder.build());
+    }
 
 }

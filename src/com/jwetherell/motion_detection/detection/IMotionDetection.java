@@ -28,4 +28,6 @@ public interface IMotionDetection {
      *             if data integer array is NULL.
      */
     public boolean detect(int[] data, int width, int height);
+    
+    public void reset();
 }

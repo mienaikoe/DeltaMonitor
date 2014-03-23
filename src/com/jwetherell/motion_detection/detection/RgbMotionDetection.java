@@ -24,6 +24,14 @@ public class RgbMotionDetection implements IMotionDetection {
     private static int mPreviousWidth = 0;
     private static int mPreviousHeight = 0;
 
+    
+    
+    @Override
+    public void reset(){
+        mPrevious = null;
+    }
+    
+    
     /**
      * {@inheritDoc}
      */
