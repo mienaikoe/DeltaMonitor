@@ -1,5 +1,7 @@
 /bin/*
-!/bin/DeltaMonitor-debug.apk
+!/bin/DeltaMonitor-release.apk
+
+ant.properties
 
 /gen
 /nbproject

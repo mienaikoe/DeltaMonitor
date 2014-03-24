@@ -16,8 +16,8 @@ public class RgbMotionDetection implements IMotionDetection {
     // private static final String TAG = "RgbMotionDetection";
 
     // Specific settings
-    private static final int mPixelThreshold = 50; // Difference in pixel (RGB)
-    private static final int mThreshold = 10000; // Number of different pixels
+    private static final int mPixelThreshold = 50; // Difference in individual pixel (RGB)
+    private static final int mThreshold = 2000; // Number of different pixels
                                                  // (RGB)
 
     private static int[] mPrevious = null;
