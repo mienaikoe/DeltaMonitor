@@ -67,16 +67,22 @@ public class CameraWatcherService extends Service {
 
         notifyMessage("DeltaMonitor Running","Touch to Preview Camera");
         
-        super.onCreate();
-
-        startRecording();
+        try{
+            super.onCreate();
+            startRecording();
+        } catch(Exception ex){
+            Toast.makeText(getBaseContext(), ex.getMessage(), Toast.LENGTH_SHORT).show();
+            onDestroy();
+        }
     }
 
     @Override
     public void onDestroy() {
         Log.w(TAG, "============Destroying CameraWatcherService");
         stopRecording();
-        camera.release();
+        if(camera != null){
+            camera.release();
+        }
         notifier.cancel(NOTIFICATION_ID);
         super.onDestroy();
     }
@@ -89,6 +95,10 @@ public class CameraWatcherService extends Service {
                 Log.e(TAG, ex.getMessage());
                 ex.printStackTrace();
                 return;
+            }
+            if( camera == null ){
+                Log.e(TAG, "Camera is null despite trying to allocate it. Stopping Service");
+                throw new IllegalStateException("DeltaMonitor was unable to allocate the camera.");
             }
         }
 
@@ -119,13 +129,15 @@ public class CameraWatcherService extends Service {
 
     public void stopRecording() {
         try {
-            camera.stopPreview();
-            camera.setPreviewCallbackWithBuffer(null);
-            camera.setPreviewCallback(null);
-            camera.setPreviewTexture(null);
+            if( camera != null){
+                camera.stopPreview();
+                camera.setPreviewCallbackWithBuffer(null);
+                camera.setPreviewCallback(null);
+                camera.setPreviewTexture(null);
+            }
             texture = null; //TODO: This is a patch for a bug (SurfaceTexture has been abandoned)
         } catch (IOException ex) {
-            Log.e(TAG, "IOException during recording setup " + ex.getMessage());
+            Log.e(TAG, "IOException during recording setdown " + ex.getMessage());
             ex.printStackTrace();
         }
 
