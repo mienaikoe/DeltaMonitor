@@ -14,6 +14,7 @@ import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.widget.SeekBar;
 import com.mienaikoe.deltamonitor.CameraWatcherService.CameraWatcherServiceBinder;
 import java.io.IOException;
 
@@ -30,6 +31,7 @@ public class MotionDetectionActivity extends Activity{
     private CameraWatcherService watcherService;
     private boolean bound = false;
     private SurfaceHolder previewHolder;
+    private SeekBar sensitivity;
 
 
     
@@ -47,18 +49,38 @@ public class MotionDetectionActivity extends Activity{
         SurfaceView preview = (SurfaceView)findViewById(R.id.preview);
         previewHolder = preview.getHolder();
         previewHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+        
+        this.sensitivity = (SeekBar)findViewById(R.id.sensitivity);
+        this.sensitivity.setOnSeekBarChangeListener(new SensitivityChanger());
 
         Intent bindingIntent = new Intent(this, CameraWatcherService.class);        
         bindService(bindingIntent, connection, Context.BIND_ABOVE_CLIENT);
     }
 
-    
+    private class SensitivityChanger implements SeekBar.OnSeekBarChangeListener {
+
+        @Override
+        public void onProgressChanged(SeekBar sb, int i, boolean bln) {
+            watcherService.setSensitivity(i);
+        }
+
+        @Override
+        public void onStartTrackingTouch(SeekBar sb) {
+            // do nothing?
+        }
+
+        @Override
+        public void onStopTrackingTouch(SeekBar sb) {
+            // do nothing?
+        }
+        
+    }
   
     
     
     
 
-    private ServiceConnection connection = new ServiceConnection() {
+    private final ServiceConnection connection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName className, IBinder binderGen) {
             Log.i(TAG,"====================================== Service Connected");
@@ -67,6 +89,8 @@ public class MotionDetectionActivity extends Activity{
             CameraWatcherServiceBinder binder = (CameraWatcherServiceBinder) binderGen;
             watcherService = binder.getService();
             bound = true;
+            
+            sensitivity.setProgress(watcherService.getSensitivity());
             
             watcherService.stopRecording();
             camera = watcherService.getCamera();

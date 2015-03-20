@@ -18,8 +18,15 @@
             android:id="@+id/stop" 
             android:layout_width="wrap_content" 
             android:layout_height="wrap_content"
-            android:onClick="stopWatching"
-        >
+            android:onClick="stopWatching">
         </Button>
+        <SeekBar
+            android:id="@+id/sensitivity" 
+            android:layout_width="400dp" 
+            android:layout_height="wrap_content"
+            android:max="90"
+            android:paddingTop="6dp"
+            android:paddingLeft="12dp">
+        </SeekBar>
     </LinearLayout>
 </FrameLayout>

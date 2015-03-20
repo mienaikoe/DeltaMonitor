@@ -40,7 +40,7 @@ public class CameraWatcherService extends Service {
     private boolean toastPopped = false;
     private boolean bound = false;
     private static final int NOTIFICATION_ID = 614;
-    private IMotionDetection detector = null;
+    private RgbMotionDetection detector = null;
     private NotificationManager notifier;
 
     public Camera getCamera() {
@@ -56,14 +56,7 @@ public class CameraWatcherService extends Service {
 
     @Override
     public void onCreate() {
-        if (Preferences.USE_RGB) {
-            detector = new RgbMotionDetection();
-        } else if (Preferences.USE_LUMA) {
-            detector = new LumaMotionDetection();
-        } else {
-            // Using State based (aggregate map)
-            detector = new AggregateLumaMotionDetection();
-        }
+        detector = new RgbMotionDetection();
 
         notifyMessage("DeltaMonitor Running","Touch to Preview Camera");
         
@@ -193,11 +186,17 @@ public class CameraWatcherService extends Service {
         return super.onUnbind(intent);
     }
     
+    public void setSensitivity(int sensitivity){
+        this.detector.setmThreshold(90-sensitivity);
+    }
+    
+    public int getSensitivity(){
+        return 90-this.detector.getmThreshold();
+    }
     
     
     
     
-
     private void notifyMessage(String title, String message) {
         NotificationCompat.Builder mBuilder
                 = new NotificationCompat.Builder(this)

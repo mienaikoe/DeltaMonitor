@@ -1,6 +1,7 @@
 package com.jwetherell.motion_detection.detection;
 
 import android.graphics.Color;
+import android.util.Log;
 
 
 //import android.util.Log;
@@ -16,10 +17,9 @@ public class RgbMotionDetection implements IMotionDetection {
     // private static final String TAG = "RgbMotionDetection";
 
     // Specific settings
-    private static final int mPixelThreshold = 50; // Difference in individual pixel (RGB)
-    private static final int mThreshold = 2000; // Number of different pixels
-                                                 // (RGB)
-
+    private int mPixelThreshold = 50; // Difference in each individual pixel (RGB)
+    private int mThreshold = 5; // Percentage of different pixels
+                                              
     private static int[] mPrevious = null;
     private static int mPreviousWidth = 0;
     private static int mPreviousHeight = 0;
@@ -40,13 +40,14 @@ public class RgbMotionDetection implements IMotionDetection {
         return ((mPrevious != null) ? mPrevious.clone() : null);
     }
 
-    protected static boolean isDifferent(int[] first, int width, int height) {
+    protected boolean isDifferent(int[] first, int width, int height) {
         if (first == null) throw new NullPointerException();
 
         if (mPrevious == null) return false;
         if (first.length != mPrevious.length) return true;
         if (mPreviousWidth != width || mPreviousHeight != height) return true;
 
+        int pixelThreshold = (int)((width * height) * (mThreshold/100.0)); // mThresh is a percentage!
         int totDifferentPixels = 0;
         for (int i = 0, ij = 0; i < height; i++) {
             for (int j = 0; j < width; j++, ij++) {
@@ -61,21 +62,14 @@ public class RgbMotionDetection implements IMotionDetection {
 
                 if (Math.abs(pix - otherPix) >= mPixelThreshold) {
                     totDifferentPixels++;
-                    // Paint different pixel red
-                    first[ij] = Color.RED;
+                    if( totDifferentPixels >= pixelThreshold ){
+                        return true;
+                    }
                 }
             }
         }
-        if (totDifferentPixels <= 0) totDifferentPixels = 1;
-        boolean different = totDifferentPixels > mThreshold;
-        /*
-         * int size = height * width; int percent =
-         * 100/(size/totDifferentPixels); String output =
-         * "Number of different pixels: " + totDifferentPixels + "> " + percent
-         * + "%"; if (different) { Log.e(TAG, output); } else { Log.d(TAG,
-         * output); }
-         */
-        return different;
+
+        return false;
     }
 
     /**
@@ -109,4 +103,20 @@ public class RgbMotionDetection implements IMotionDetection {
 
         return motionDetected;
     }
+
+    public void setmPixelThreshold(int mPixelThreshold) {
+        this.mPixelThreshold = mPixelThreshold;
+    }
+
+    public void setmThreshold(int mThreshold) {
+        Log.i("Threshold: ", String.valueOf(mThreshold));
+        this.mThreshold = mThreshold;
+    }
+
+    public int getmThreshold() {
+        return mThreshold;
+    }
+    
+    
+    
 }
